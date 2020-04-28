@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/3.4.0/fabric.min.js"></script>
+</head>
+<body>
+    <div id="test" style="overflow: hidden;">
+        <div style="float: left">
+            <video autoplay style="display: none" width="640" height="360"></video>
+            <canvas style="width: 640px; height: 360px" id="canvas"></canvas>
+            <button class="capture-button">START</button>
+        </div>
+        <div id="zones" style="float: right">
+
+        </div>
+    </div>
+
+<script>
+
+  const captureVideoButton = document.querySelector('#test .capture-button');
+  const video = document.querySelector('#test video');
+
+  captureVideoButton.onclick = function() {
+    navigator.mediaDevices.getUserMedia({
+      video: true
+    }).then(stream => {
+      const tracks = stream.getTracks();
+      if (!tracks.length) throw new Error('pew');
+
+      const { width, height } = tracks[0].getSettings();
+
+      init(width, height, stream);
+    }).catch((e) => {
+      console.log(e);
+      alert('something went wrong')
+    });
+  };
+
+    function init(width, height, stream) {
+      const canvas = document.querySelector('#canvas');
+      canvas.setAttribute('width', width);
+      canvas.setAttribute('height', height);
+      video.setAttribute('width', width);
+      video.setAttribute('height', height);
+
+      video.style.width = width + 'px';
+      video.style.height = height + 'px';
+
+      const fabricCanvas = new fabric.Canvas(canvas, {
+        width: width,
+        height: height,
+      });
+
+      const zones = document.querySelector('#zones');
+
+      const deleteIcon = "data:image/svg+xml,%3C%3Fxml version='1.0' encoding='utf-8'%3F%3E%3C!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'%3E%3Csvg version='1.1' id='Ebene_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xml:space='preserve'%3E%3Ccircle style='fill:%23F44336;' cx='299.76' cy='439.067' r='218.516'/%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18'/%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179'/%3E%3C/g%3E%3C/svg%3E";
+
+      let initialPos, bounds, rect, dragging = false, isMoving = false;
+      const options = {
+        drawRect: false,
+        onlyOne: false,
+        rectProps: {
+          stroke: 'red',
+          strokeWidth: 1,
+          fill: ''
+        }
+      }
+
+      window.rects = [];
+
+      function onMouseDown(e) {
+        dragging = true;
+        initialPos = { ...e.pointer }
+        bounds = {}
+        if (isMoving) {
+          isMoving = false;
+          return;
+        }
+        if(options.drawRect && !isMoving){
+          rect = new fabric.Rect({
+            left: initialPos.x,
+            top: initialPos.y,
+            width: 0, height: 0,
+            ...options.rectProps
+          });
+          fabricCanvas.add(rect)
+          rects.push(rect);
+        }
+      }
+      function update({pointer}) {
+        if (initialPos.x > pointer.x) {
+          bounds.x = Math.max(0, pointer.x)
+          bounds.width = initialPos.x - bounds.x
+        } else {
+          bounds.x = initialPos.x
+          bounds.width = pointer.x - initialPos.x
+        }
+        if (initialPos.y > pointer.y) {
+          bounds.y = Math.max(0, pointer.y)
+          bounds.height = initialPos.y - bounds.y
+        } else {
+          bounds.height = pointer.y - initialPos.y
+          bounds.y = initialPos.y
+        }
+        if(options.drawRect && !isMoving){
+          rect.left = bounds.x
+          rect.top = bounds.y
+          rect.width = bounds.width
+          rect.height = bounds.height
+          rect.dirty = true
+          fabricCanvas.requestRenderAllBound()
+        }
+      }
+
+      function onMouseMove(e) {
+        if (!dragging && !isMoving) return;
+        requestAnimationFrame(() => update(e))
+      }
+
+      function onMouseUp(e) {
+        dragging = false;
+        if (options.drawRect && rect && (rect.width == 0 || rect.height === 0)) {
+          fabricCanvas.remove(rect)
+        }
+        if((!options.drawRect||!rect) && !isMoving){
+          rect = new fabric.Rect({
+            ...bounds, left: bounds.x, top: bounds.y,
+            ...options.rectProps
+          });
+          fabricCanvas.add(rect)
+          rects.push(rect);
+          rect.dirty = true
+          fabricCanvas.requestRenderAllBound()
+        }
+        isMoving = false;
+        rect.setCoords()
+      }
+      function install() {
+        fabricCanvas.on('mouse:down', onMouseDown);
+        fabricCanvas.on('object:moving', () => {
+          isMoving = true;
+        });
+        fabricCanvas.on('object:scaling', () => {
+          isMoving = true;
+        });
+        fabricCanvas.on('object:rotating', () => {
+          isMoving = true;
+        });
+        fabricCanvas.on('object:skewing', () => {
+          isMoving = true;
+        });
+        fabricCanvas.on('mouse:move', onMouseMove);
+        fabricCanvas.on('mouse:up', onMouseUp);
+      }
+
+      install();
+
+      video.srcObject = stream;
+
+      const img = new fabric.Image(
+        video,
+        {
+          top: 0,
+          left: 0,
+          width,
+          height,
+          selectable: false,
+          objectCaching: false
+        }
+      );
+
+      Object.assign(window, {
+        _test: {
+          img, fabricCanvas
+        }
+      })
+
+      fabricCanvas.add(img);
+      fabric.util.requestAnimFrame(function render() {
+        fabricCanvas.renderAll();
+        rects.forEach(r => {
+          let canv;
+          const find = [...zones.querySelectorAll('canvas')].find(c => c._rect === r);
+          if (find) {
+            canv = find;
+          } else {
+            canv = document.createElement('canvas');
+            canv._rect = r;
+          }
+          const ctx = canv.getContext('2d');
+          canv.width = r.width;
+          canv.height = r.height;
+          canv.style.width = r.width * r.scaleX + 'px';
+          canv.style.height = r.height * r.scaleY + 'px';
+          ctx.drawImage(video, r.left, r.top, r.width, r.height, 0, 0, r.width, r.height);
+          if (!find) {
+            zones.appendChild(canv)
+          }
+        })
+        fabric.util.requestAnimFrame(render);
+      });
+
+    }
+
+
+</script>
+</body>
+</html>
