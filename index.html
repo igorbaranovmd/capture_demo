@@ -7,6 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/3.4.0/fabric.min.js"></script>
+    <script src="https://raw.githack.com/justadudewhohacks/face-api.js/master/dist/face-api.min.js"></script>
 </head>
 <body>
     <div id="test" style="overflow: hidden;">
@@ -26,6 +27,7 @@
   const video = document.querySelector('#test video');
 
   captureVideoButton.onclick = function() {
+    captureVideoButton.style.display = 'none';
     navigator.mediaDevices.getUserMedia({
       video: true
     }).then(stream => {
@@ -205,6 +207,68 @@
         fabric.util.requestAnimFrame(render);
       });
 
+
+      let modelsLoaded = false;
+
+      (async function() {
+        try {
+          await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+            faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+            faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
+            faceapi.nets.faceExpressionNet.loadFromUri('/models')
+          ])
+          modelsLoaded = true;
+
+        } catch(e) {
+          console.log(e);
+        }
+      })();
+
+      const faceRects = [];
+
+      async function detect() {
+        try {
+          if (modelsLoaded) {
+            const data = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+            faceRects.forEach(i => fabricCanvas.remove(i));
+            faceRects.length = 0;
+            if (data.length) {
+              data.forEach(({ expressions, detection: { box } }) => {
+                faceRects.push(new fabric.Rect({
+                  left: box.x,
+                  top: box.y,
+                  width: box.width,
+                  height: box.height,
+                  stroke: 'blue',
+                  strokeWidth: 3,
+                  fill: ''
+                }));
+                const arr = expressions.asSortedArray();
+                if (arr.length) {
+                  faceRects.push(new fabric.Text(arr[0].expression, {
+                    left: box.x + 4,
+                    top: box.y + box.height,
+                    fill: 'blue'
+                  }));
+                }
+
+              })
+              faceRects.forEach(i => fabricCanvas.add(i));
+              fabricCanvas.requestRenderAllBound()
+            }
+          }
+        } catch (e) {
+          console.log(e);
+        } finally {
+          await detect();
+        }
+      }
+
+      const interval = setInterval(() => {
+        if (modelsLoaded) detect()
+        clearInterval(interval);
+      }, 1000);
     }
 
 
