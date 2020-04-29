@@ -5,31 +5,46 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>Demo</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/3.4.0/fabric.min.js"></script>
     <script src="./face-api.js"></script>
     <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <style>
         #zones .canvas {
             display: inline-block;
             border: 1px solid;
             overflow: hidden;
             position: relative;
+            margin: 2px;
         }
-
+        .capture-button {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
         #zones .canvas .remove {
             width: 20px;
             height: 20px;
             font-size: 15px;
-            line-height: 20px;
-            text-align: center;
-            color: white;
-            background-color: red;
-            border-radius: 50%;
             position: absolute;
             top: 3px;
             right: 3px;
             cursor: pointer;
+            line-height: 1.1;
+            padding: 0;
+            margin: 0;
+        }
+        #zones .canvas .remove i {
+            font-size: 15px;
+            line-height: 17px;
         }
         #zones canvas {
             width: 100%;
@@ -39,13 +54,23 @@
     </style>
 </head>
 <body>
-    <div id="test" style="overflow: hidden;">
-        <div style="float: left">
+    <nav>
+        <div class="nav-wrapper">
+            <span class="brand-logo center">
+                <img src="https://mobidev.biz/wp-content/themes/MobiDev/images/media/logo.svg" alt="logo" style="width: 140px; height: 30px;"> Demo
+            </span>
+        </div>
+    </nav>
+    <br>
+    <br>
+    <br>
+    <div id="test" class="row" style="overflow: hidden;">
+        <button class="waves-effect waves-light btn-large capture-button">START</button>
+        <div class="col s6">
             <video autoplay style="display: none" width="640" height="360"></video>
             <canvas style="width: 640px; height: 360px" id="canvas"></canvas>
-            <button class="capture-button">START</button>
         </div>
-        <div id="zones" style="float: right">
+        <div id="zones" class="col s6">
 
         </div>
     </div>
@@ -97,6 +122,14 @@
             fabricCanvas.remove(_rect);
             rects.splice(rects.indexOf(_rect), 1);
             e.target.parentNode.remove();
+          }
+        } else if (e.target.classList.contains('remove-icon')) {
+          e.preventDefault();
+          if (e.target.parentNode.parentNode._rect) {
+            const _rect = e.target.parentNode.parentNode._rect;
+            fabricCanvas.remove(_rect);
+            rects.splice(rects.indexOf(_rect), 1);
+            e.target.parentNode.parentNode.remove();
           }
         }
       })
@@ -238,8 +271,8 @@
           } else {
             append = document.createElement('div');
             const remove = document.createElement('div');
-            remove.textContent = 'X';
-            remove.classList.add('remove');
+            remove.innerHTML = '<i class="material-icons remove-icon">delete</i>';
+            remove.setAttribute('class', 'remove btn-floating btn-large waves-effect waves-light red');
             append.appendChild(remove);
             append.classList.add('canvas');
             append.classList.add('js-resizable');
