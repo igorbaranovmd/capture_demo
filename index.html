@@ -14,6 +14,22 @@
             display: inline-block;
             border: 1px solid;
             overflow: hidden;
+            position: relative;
+        }
+
+        #zones .canvas .remove {
+            width: 20px;
+            height: 20px;
+            font-size: 15px;
+            line-height: 20px;
+            text-align: center;
+            color: white;
+            background-color: red;
+            border-radius: 50%;
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            cursor: pointer;
         }
         #zones canvas {
             width: 100%;
@@ -73,6 +89,18 @@
 
       const zones = document.querySelector('#zones');
 
+      zones.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove')) {
+          e.preventDefault();
+          if (e.target.parentNode._rect) {
+            const _rect = e.target.parentNode._rect;
+            fabricCanvas.remove(_rect);
+            rects.splice(rects.indexOf(_rect), 1);
+            e.target.parentNode.remove();
+          }
+        }
+      })
+
       const deleteIcon = "data:image/svg+xml,%3C%3Fxml version='1.0' encoding='utf-8'%3F%3E%3C!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'%3E%3Csvg version='1.1' id='Ebene_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xml:space='preserve'%3E%3Ccircle style='fill:%23F44336;' cx='299.76' cy='439.067' r='218.516'/%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18'/%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179'/%3E%3C/g%3E%3C/svg%3E";
 
       let initialPos, bounds, rect, dragging = false, isMoving = false;
@@ -83,7 +111,8 @@
           stroke: 'red',
           strokeWidth: 1,
           fill: '',
-          hasRotatingPoint : false
+          hasRotatingPoint : false,
+          lockUniScaling: true
         }
       }
 
@@ -208,6 +237,10 @@
             canv = find.querySelector('canvas');
           } else {
             append = document.createElement('div');
+            const remove = document.createElement('div');
+            remove.textContent = 'X';
+            remove.classList.add('remove');
+            append.appendChild(remove);
             append.classList.add('canvas');
             append.classList.add('js-resizable');
             append._rect = r;
@@ -215,6 +248,9 @@
             append.appendChild(canv);
             interact(append).resizable({
               edges: { left: true, right: true, bottom: true, top: true },
+              modifiers: [ interact.modifiers.aspectRatio({
+                equalDelta: true
+              })],
               listeners: {
                 move (event) {
                   const target = event.target
