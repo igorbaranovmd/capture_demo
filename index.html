@@ -322,7 +322,7 @@
             interact(append).resizable({
               edges: { left: true, right: true, bottom: true, top: true },
               modifiers: [ interact.modifiers.aspectRatio({
-                equalDelta: true
+                ratio: 'preserve'
               })],
               listeners: {
                 move (event) {
