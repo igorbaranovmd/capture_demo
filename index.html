@@ -213,10 +213,10 @@
       (async function() {
         try {
           await Promise.all([
-            faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-            faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-            faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
-            faceapi.nets.faceExpressionNet.loadFromUri('/models')
+            faceapi.nets.tinyFaceDetector.loadFromUri('/capture_demo/models'),
+            faceapi.nets.faceLandmark68Net.loadFromUri('/capture_demo/models'),
+            faceapi.nets.faceRecognitionNet.loadFromUri('/capture_demo/models'),
+            faceapi.nets.faceExpressionNet.loadFromUri('/capture_demo/models')
           ])
           modelsLoaded = true;
 
