@@ -8,6 +8,19 @@
     <title>Document</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/3.4.0/fabric.min.js"></script>
     <script src="./face-api.js"></script>
+    <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+    <style>
+        #zones .canvas {
+            display: inline-block;
+            border: 1px solid;
+            overflow: hidden;
+        }
+        #zones canvas {
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
     <div id="test" style="overflow: hidden;">
@@ -69,7 +82,8 @@
         rectProps: {
           stroke: 'red',
           strokeWidth: 1,
-          fill: ''
+          fill: '',
+          hasRotatingPoint : false
         }
       }
 
@@ -187,21 +201,50 @@
         fabricCanvas.renderAll();
         rects.forEach(r => {
           let canv;
-          const find = [...zones.querySelectorAll('canvas')].find(c => c._rect === r);
+          let append;
+          const find = [...zones.querySelectorAll('.canvas')].find(c => c._rect === r);
           if (find) {
-            canv = find;
+            append = find;
+            canv = find.querySelector('canvas');
           } else {
+            append = document.createElement('div');
+            append.classList.add('canvas');
+            append.classList.add('js-resizable');
+            append._rect = r;
             canv = document.createElement('canvas');
-            canv._rect = r;
+            append.appendChild(canv);
+            interact(append).resizable({
+              edges: { left: true, right: true, bottom: true, top: true },
+              listeners: {
+                move (event) {
+                  const target = event.target
+                  let x = (parseFloat(target.getAttribute('data-x')) || 0)
+                  let y = (parseFloat(target.getAttribute('data-y')) || 0)
+
+                  // update the element's style
+                  target.style.width = event.rect.width + 'px'
+                  target.style.height = event.rect.height + 'px'
+
+                  // translate when resizing from top or left edges
+                  x += event.deltaRect.left
+                  y += event.deltaRect.top
+
+                  target.setAttribute('data-x', x)
+                  target.setAttribute('data-y', y)
+                }
+              }
+            });
           }
           const ctx = canv.getContext('2d');
-          canv.width = r.width;
-          canv.height = r.height;
-          canv.style.width = r.width * r.scaleX + 'px';
-          canv.style.height = r.height * r.scaleY + 'px';
-          ctx.drawImage(video, r.left, r.top, r.width, r.height, 0, 0, r.width, r.height);
+          if (!append.hasAttribute('style')) {
+            append.style.width = r.width * r.scaleX + 'px';
+            append.style.height = r.height * r.scaleY + 'px';
+          }
+          canv.width = r.width * r.scaleX;
+          canv.height = r.height * r.scaleY;
+          ctx.drawImage(video, r.left, r.top, r.width * r.scaleX, r.height * r.scaleY, 0, 0, r.width * r.scaleX, r.height * r.scaleY);
           if (!find) {
-            zones.appendChild(canv)
+            zones.appendChild(append)
           }
         })
         fabric.util.requestAnimFrame(render);
@@ -210,15 +253,18 @@
 
       let modelsLoaded = false;
 
-      (async function() {
+      (function() {
         try {
-          await Promise.all([
-            faceapi.nets.tinyFaceDetector.loadFromUri('/capture_demo/models'),
-            faceapi.nets.faceLandmark68Net.loadFromUri('/capture_demo/models'),
-            faceapi.nets.faceRecognitionNet.loadFromUri('/capture_demo/models'),
-            faceapi.nets.faceExpressionNet.loadFromUri('/capture_demo/models')
-          ])
-          modelsLoaded = true;
+          const idleCallback = requestIdleCallback || setImmediate;
+          const path = location.hostname === 'localhost' ? '/models' : '/capture_demo/models'
+          idleCallback(() => {
+            Promise.all([
+              faceapi.nets.tinyFaceDetector.loadFromUri(path),
+              faceapi.nets.faceLandmark68Net.loadFromUri(path),
+              faceapi.nets.faceRecognitionNet.loadFromUri(path),
+              faceapi.nets.faceExpressionNet.loadFromUri(path)
+            ]).then(() => modelsLoaded = true);
+          });
 
         } catch(e) {
           console.log(e);
@@ -242,14 +288,18 @@
                   height: box.height,
                   stroke: 'blue',
                   strokeWidth: 3,
-                  fill: ''
+                  fill: '',
+                  selectable: false,
+                  hasRotatingPoint : false
                 }));
                 const arr = expressions.asSortedArray();
                 if (arr.length) {
                   faceRects.push(new fabric.Text(arr[0].expression, {
                     left: box.x + 4,
                     top: box.y + box.height,
-                    fill: 'blue'
+                    fill: 'blue',
+                    selectable: false,
+                    centerRotation: false
                   }));
                 }
 
