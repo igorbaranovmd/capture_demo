@@ -17,6 +17,10 @@
     <!-- Compiled and minified JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <style>
+        video {
+            height: auto;
+            width: 100%;
+        }
         #zones .canvas {
             display: inline-block;
             border: 1px solid;
@@ -24,7 +28,7 @@
             position: relative;
             margin: 2px;
         }
-        .capture-button {
+        #buttons {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -65,10 +69,14 @@
     <br>
     <br>
     <div id="test" class="row" style="overflow: hidden;">
-        <button class="waves-effect waves-light btn-large capture-button">START</button>
+        <div id="buttons">
+            <button class="waves-effect waves-light btn-large capture-button">START WEBCAM</button>
+            <button class="waves-effect waves-light btn-large start-with-upload red">START WITH UPLOAD</button>
+            <input id="file-input" type="file" name="name" style="display: none;" accept="video/*"/>
+        </div>
         <div class="col s6">
-            <video autoplay style="display: none" width="640" height="360"></video>
-            <canvas style="width: 640px; height: 360px" id="canvas"></canvas>
+            <video autoplay controls style="display: none"></video>
+            <canvas id="canvas"></canvas>
         </div>
         <div id="zones" class="col s6">
 
@@ -78,10 +86,35 @@
 <script>
 
   const captureVideoButton = document.querySelector('#test .capture-button');
+  const startWithUpload = document.querySelector('#test .start-with-upload');
+  const buttonsContainer = document.querySelector('#buttons');
+  const fileInput = document.querySelector('#file-input');
   const video = document.querySelector('#test video');
 
+  startWithUpload.onclick = function() {
+    fileInput.click();
+  }
+
+  fileInput.addEventListener('change', e => {
+    const target = e.target;
+    if (target.files.length) {
+      buttonsContainer.style.display = 'none';
+      const reader = new FileReader();
+      reader.onerror = function() {
+        buttonsContainer.style.display = 'block';
+
+        alert('something went wrong');
+      };
+      reader.onload = function (file) {
+        const result = file.target.result;
+        init(null, null, null, result);
+      }
+      reader.readAsDataURL(target.files[0]);
+    }
+  });
+
   captureVideoButton.onclick = function() {
-    captureVideoButton.style.display = 'none';
+    buttonsContainer.style.display = 'none';
     navigator.mediaDevices.getUserMedia({
       video: true
     }).then(stream => {
@@ -97,7 +130,15 @@
     });
   };
 
-    function init(width, height, stream) {
+    function init(width, height, stream, videoSrc) {
+      video.style.display = 'block';
+      if (!width || !height) {
+        const videoRect = video.getBoundingClientRect();
+        width = videoRect.width;
+        height = videoRect.height;
+      }
+      video.style.display = 'none';
+
       const canvas = document.querySelector('#canvas');
       canvas.setAttribute('width', width);
       canvas.setAttribute('height', height);
@@ -108,8 +149,8 @@
       video.style.height = height + 'px';
 
       const fabricCanvas = new fabric.Canvas(canvas, {
-        width: width,
-        height: height,
+        width,
+        height
       });
 
       const zones = document.querySelector('#zones');
@@ -238,27 +279,26 @@
 
       install();
 
-      video.srcObject = stream;
+      if (stream) {
+        video.srcObject = stream;
+      } else {
+        video.src = videoSrc;
+        video.play();
+      }
 
-      const img = new fabric.Image(
-        video,
-        {
-          top: 0,
-          left: 0,
-          width,
-          height,
-          selectable: false,
-          objectCaching: false
+      fabric.customBackground = fabric.util.createClass(fabric.Object, {
+        render(ctx) {
+          ctx.drawImage(video, 0,0, width, height);
         }
-      );
+      });
 
       Object.assign(window, {
         _test: {
-          img, fabricCanvas
+          fabricCanvas
         }
       })
 
-      fabricCanvas.add(img);
+      fabricCanvas.add(new fabric.customBackground());
       fabric.util.requestAnimFrame(function render() {
         fabricCanvas.renderAll();
         rects.forEach(r => {
@@ -311,7 +351,13 @@
           }
           canv.width = r.width * r.scaleX;
           canv.height = r.height * r.scaleY;
-          ctx.drawImage(video, r.left, r.top, r.width * r.scaleX, r.height * r.scaleY, 0, 0, r.width * r.scaleX, r.height * r.scaleY);
+          const videoHeight = video.videoHeight;
+          const videoWidth = video.videoWidth;
+          const correctPosition = {
+            width: videoWidth / width,
+            height: videoHeight / height
+          }
+          ctx.drawImage(video, r.left * correctPosition.width, r.top * correctPosition.height, r.width * correctPosition.width, r.height * correctPosition.height, 0, 0, r.width, r.height);
           if (!find) {
             zones.appendChild(append)
           }
@@ -345,16 +391,21 @@
       async function detect() {
         try {
           if (modelsLoaded) {
-            const data = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+            const data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
             faceRects.forEach(i => fabricCanvas.remove(i));
             faceRects.length = 0;
             if (data.length) {
-              data.forEach(({ expressions, detection: { box } }) => {
+              data.forEach(({ expressions, detection: { box, imageDims } }) => {
+                const realPosition = imageDims;
+                const correctPosition = {
+                  width: realPosition.width / width,
+                  height: realPosition.height / height
+                }
                 faceRects.push(new fabric.Rect({
-                  left: box.x,
-                  top: box.y,
-                  width: box.width,
-                  height: box.height,
+                  left: box.x / correctPosition.width,
+                  top: box.y / correctPosition.height,
+                  width: box.width / correctPosition.width,
+                  height: box.height / correctPosition.height,
                   stroke: 'blue',
                   strokeWidth: 3,
                   fill: '',
@@ -364,8 +415,8 @@
                 const arr = expressions.asSortedArray();
                 if (arr.length) {
                   faceRects.push(new fabric.Text(arr[0].expression, {
-                    left: box.x + 4,
-                    top: box.y + box.height,
+                    left: box.x / correctPosition.width + 4,
+                    top: box.y / correctPosition.height + box.height / correctPosition.height,
                     fill: 'blue',
                     selectable: false,
                     centerRotation: false
