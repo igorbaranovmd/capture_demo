@@ -266,8 +266,10 @@
       }
 
       const interval = setInterval(() => {
-        if (modelsLoaded) detect()
-        clearInterval(interval);
+        if (modelsLoaded) {
+          detect()
+          clearInterval(interval);
+        }
       }, 1000);
     }
 
