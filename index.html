@@ -357,7 +357,16 @@
             width: videoWidth / width,
             height: videoHeight / height
           }
-          ctx.drawImage(video, r.left * correctPosition.width, r.top * correctPosition.height, r.width * correctPosition.width, r.height * correctPosition.height, 0, 0, r.width, r.height);
+          ctx.drawImage(
+            video,
+            r.left * correctPosition.width,
+            r.top * correctPosition.height,
+            r.width * correctPosition.width * r.scaleX,
+            r.height * correctPosition.height * r.scaleX,
+            0,
+            0,
+            r.width * r.scaleX,
+            r.height * r.scaleY);
           if (!find) {
             zones.appendChild(append)
           }
