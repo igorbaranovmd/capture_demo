@@ -20,6 +20,8 @@
         video {
             height: auto;
             width: 100%;
+            opacity: 0;
+            display: block !important;
         }
         #zones .canvas {
             display: inline-block;
@@ -33,6 +35,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            z-index: 9999;
         }
         #zones .canvas .remove {
             width: 20px;
@@ -83,16 +86,18 @@
             <input id="file-input" type="file" name="name" style="display: none;" accept="video/*"/>
         </div>
         <div class="col m6 s12">
-            <video autoplay style="display: none"></video>
             <canvas id="canvas"></canvas>
         </div>
         <div id="zones" class="col m6 s12">
 
         </div>
+        <div class="col m6 s12">
+            <video autoplay style="display: none"></video>
+        </div>
     </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', main);
+  document.addEventListener('DOMContentLoaded', main);
 
     function main() {
 
@@ -151,18 +156,15 @@
 
         }
       });
-
-  captureVideoButton.onclick = function() {
+      captureVideoButton.onclick = function() {
     buttonsContainer.style.display = 'none';
     navigator.mediaDevices.getUserMedia({
       video: true
     }).then(stream => {
       const tracks = stream.getTracks();
       if (!tracks.length) throw new Error('pew');
-
       init(null, null, stream);
     }).catch((e) => {
-      console.log(e);
       alert('something went wrong')
     });
   };
@@ -197,7 +199,12 @@
 
         video.style.width = width + 'px';
         video.style.height = height + 'px';
+        // video.style.position = 'absolute';
+        // video.style.left = '-9999px';
 
+        video.setAttribute('autoplay', '');
+        video.setAttribute('muted', '');
+        video.setAttribute('playsinline', '');
         const fabricCanvas = new fabric.Canvas(canvas, {
           width,
           height
@@ -358,7 +365,9 @@
           } catch (e) {
 
           } finally {
-            await detect();
+            setTimeout(() => {
+              detect();
+            }, 100);
           }
         }
 
