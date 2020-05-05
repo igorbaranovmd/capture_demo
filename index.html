@@ -68,50 +68,89 @@
     <br>
     <br>
     <br>
-    <div id="test" class="row" style="overflow: hidden;">
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3>Detection models are loading, please wait</h3>
+            <div class="progress">
+                <div class="indeterminate"></div>
+            </div>
+        </div>
+    </div>
+    <div id="test" class="row" style="overflow: hidden; display: none">
         <div id="buttons">
             <button class="waves-effect waves-light btn-large capture-button">START WEBCAM</button>
             <button class="waves-effect waves-light btn-large start-with-upload red">START WITH UPLOAD</button>
             <input id="file-input" type="file" name="name" style="display: none;" accept="video/*"/>
         </div>
-        <div class="col s6">
-            <video autoplay controls style="display: none"></video>
+        <div class="col m6 s12">
+            <video autoplay style="display: none"></video>
             <canvas id="canvas"></canvas>
         </div>
-        <div id="zones" class="col s6">
+        <div id="zones" class="col m6 s12">
 
         </div>
     </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', main);
 
-  const captureVideoButton = document.querySelector('#test .capture-button');
-  const startWithUpload = document.querySelector('#test .start-with-upload');
-  const buttonsContainer = document.querySelector('#buttons');
-  const fileInput = document.querySelector('#file-input');
-  const video = document.querySelector('#test video');
+    function main() {
 
-  startWithUpload.onclick = function() {
-    fileInput.click();
-  }
+      const captureVideoButton = document.querySelector('#test .capture-button');
+      const startWithUpload = document.querySelector('#test .start-with-upload');
+      const buttonsContainer = document.querySelector('#buttons');
+      const fileInput = document.querySelector('#file-input');
+      const video = document.querySelector('#test video');
+      const testContainer = document.querySelector('#test');
+      const modal = document.querySelector('#modal');
 
-  fileInput.addEventListener('change', e => {
-    const target = e.target;
-    if (target.files.length) {
-      buttonsContainer.style.display = 'none';
-      const reader = new FileReader();
-      reader.onerror = function() {
-        buttonsContainer.style.display = 'block';
+      const modalBootstrapped = M.Modal.init(modal, {
+        dismissible: false
+      });
 
-        alert('something went wrong');
-      };
-      reader.onload = function (file) {
-        const result = file.target.result;
-        init(null, null, null, result);
+      modalBootstrapped.open();
+      let modelsLoaded = false;
+
+      const path = location.hostname === 'localhost' ? '/models' : '/capture_demo/models'
+      Promise.all([
+        faceapi.nets.faceExpressionNet.loadFromUri(path),
+        faceapi.nets.tinyFaceDetector.loadFromUri(path)
+      ]).then(() => {
+            modalBootstrapped.close();
+            modelsLoaded = true;
+            testContainer.style.display = 'block';
+          }).catch(() => {
+            modalBootstrapped.close();
+            alert('something went wrong');
+          });
+
+
+      startWithUpload.onclick = function() {
+        fileInput.click();
       }
-      reader.readAsDataURL(target.files[0]);
-    }
-  });
+
+      fileInput.addEventListener('change', e => {
+        const target = e.target;
+        if (target.files.length) {
+          buttonsContainer.style.display = 'none';
+          if (URL && URL.createObjectURL) {
+            init(null, null, null, URL.createObjectURL(target.files[0]));
+          } else {
+            const reader = new FileReader();
+            reader.onerror = function() {
+              buttonsContainer.style.display = 'block';
+
+              alert('something went wrong');
+            };
+            reader.onload = function (file) {
+              const result = file.target.result;
+              init(null, null, null, result);
+            }
+            reader.readAsDataURL(target.files[0]);
+          }
+
+        }
+      });
 
   captureVideoButton.onclick = function() {
     buttonsContainer.style.display = 'none';
@@ -121,338 +160,320 @@
       const tracks = stream.getTracks();
       if (!tracks.length) throw new Error('pew');
 
-      const { width, height } = tracks[0].getSettings();
-
-      init(width, height, stream);
+      init(null, null, stream);
     }).catch((e) => {
       console.log(e);
       alert('something went wrong')
     });
   };
 
-    function init(width, height, stream, videoSrc) {
-      video.style.display = 'block';
-      if (!width || !height) {
-        const videoRect = video.getBoundingClientRect();
-        width = videoRect.width;
-        height = videoRect.height;
-      }
-      video.style.display = 'none';
-
-      const canvas = document.querySelector('#canvas');
-      canvas.setAttribute('width', width);
-      canvas.setAttribute('height', height);
-      video.setAttribute('width', width);
-      video.setAttribute('height', height);
-
-      video.style.width = width + 'px';
-      video.style.height = height + 'px';
-
-      const fabricCanvas = new fabric.Canvas(canvas, {
-        width,
-        height
-      });
-
-      const zones = document.querySelector('#zones');
-
-      zones.addEventListener('click', (e) => {
-        if (e.target.classList.contains('remove')) {
-          e.preventDefault();
-          if (e.target.parentNode._rect) {
-            const _rect = e.target.parentNode._rect;
-            fabricCanvas.remove(_rect);
-            rects.splice(rects.indexOf(_rect), 1);
-            e.target.parentNode.remove();
-          }
-        } else if (e.target.classList.contains('remove-icon')) {
-          e.preventDefault();
-          if (e.target.parentNode.parentNode._rect) {
-            const _rect = e.target.parentNode.parentNode._rect;
-            fabricCanvas.remove(_rect);
-            rects.splice(rects.indexOf(_rect), 1);
-            e.target.parentNode.parentNode.remove();
-          }
-        }
-      })
-
-      const deleteIcon = "data:image/svg+xml,%3C%3Fxml version='1.0' encoding='utf-8'%3F%3E%3C!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'%3E%3Csvg version='1.1' id='Ebene_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xml:space='preserve'%3E%3Ccircle style='fill:%23F44336;' cx='299.76' cy='439.067' r='218.516'/%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18'/%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179'/%3E%3C/g%3E%3C/svg%3E";
-
-      let initialPos, bounds, rect, dragging = false, isMoving = false;
-      const options = {
-        drawRect: false,
-        onlyOne: false,
-        rectProps: {
-          stroke: 'red',
-          strokeWidth: 1,
-          fill: '',
-          hasRotatingPoint : false,
-          lockUniScaling: true
-        }
-      }
-
-      window.rects = [];
-
-      function onMouseDown(e) {
-        dragging = true;
-        initialPos = { ...e.pointer }
-        bounds = {}
-        if (isMoving) {
-          isMoving = false;
-          return;
-        }
-        if(options.drawRect && !isMoving){
-          rect = new fabric.Rect({
-            left: initialPos.x,
-            top: initialPos.y,
-            width: 0, height: 0,
-            ...options.rectProps
-          });
-          fabricCanvas.add(rect)
-          rects.push(rect);
-        }
-      }
-      function update({pointer}) {
-        if (initialPos.x > pointer.x) {
-          bounds.x = Math.max(0, pointer.x)
-          bounds.width = initialPos.x - bounds.x
+      function init(width, height, stream, videoSrc) {
+        if (stream) {
+          video.srcObject = stream;
         } else {
-          bounds.x = initialPos.x
-          bounds.width = pointer.x - initialPos.x
+          video.src = videoSrc;
         }
-        if (initialPos.y > pointer.y) {
-          bounds.y = Math.max(0, pointer.y)
-          bounds.height = initialPos.y - bounds.y
-        } else {
-          bounds.height = pointer.y - initialPos.y
-          bounds.y = initialPos.y
-        }
-        if(options.drawRect && !isMoving){
-          rect.left = bounds.x
-          rect.top = bounds.y
-          rect.width = bounds.width
-          rect.height = bounds.height
-          rect.dirty = true
-          fabricCanvas.requestRenderAllBound()
-        }
-      }
-
-      function onMouseMove(e) {
-        if (!dragging && !isMoving) return;
-        requestAnimationFrame(() => update(e))
-      }
-
-      function onMouseUp(e) {
-        dragging = false;
-        if (options.drawRect && rect && (rect.width == 0 || rect.height === 0)) {
-          fabricCanvas.remove(rect)
-        }
-        if((!options.drawRect||!rect) && !isMoving){
-          rect = new fabric.Rect({
-            ...bounds, left: bounds.x, top: bounds.y,
-            ...options.rectProps
-          });
-          fabricCanvas.add(rect)
-          rects.push(rect);
-          rect.dirty = true
-          fabricCanvas.requestRenderAllBound()
-        }
-        isMoving = false;
-        rect.setCoords()
-      }
-      function install() {
-        fabricCanvas.on('mouse:down', onMouseDown);
-        fabricCanvas.on('object:moving', () => {
-          isMoving = true;
+        video.addEventListener('loadeddata', () => {
+          video.play();
+          startLogic(width, height);
         });
-        fabricCanvas.on('object:scaling', () => {
-          isMoving = true;
-        });
-        fabricCanvas.on('object:rotating', () => {
-          isMoving = true;
-        });
-        fabricCanvas.on('object:skewing', () => {
-          isMoving = true;
-        });
-        fabricCanvas.on('mouse:move', onMouseMove);
-        fabricCanvas.on('mouse:up', onMouseUp);
       }
 
-      install();
-
-      if (stream) {
-        video.srcObject = stream;
-      } else {
-        video.src = videoSrc;
-        video.play();
-      }
-
-      fabric.customBackground = fabric.util.createClass(fabric.Object, {
-        render(ctx) {
-          ctx.drawImage(video, 0,0, width, height);
+      function startLogic(width, height) {
+        if (!width || !height) {
+          video.style.display = 'block';
+          const videoRect = video.getBoundingClientRect();
+          const vRatio = video.videoWidth / video.videoHeight;
+          width = videoRect.width;
+          height = width / vRatio;
         }
-      });
+        video.style.display = 'none';
 
-      Object.assign(window, {
-        _test: {
-          fabricCanvas
-        }
-      })
+        const canvas = document.querySelector('#canvas');
+        canvas.setAttribute('width', width);
+        canvas.setAttribute('height', height);
+        video.setAttribute('width', width);
+        video.setAttribute('height', height);
 
-      fabricCanvas.add(new fabric.customBackground());
-      fabric.util.requestAnimFrame(function render() {
-        fabricCanvas.renderAll();
-        rects.forEach(r => {
-          let canv;
-          let append;
-          const find = [...zones.querySelectorAll('.canvas')].find(c => c._rect === r);
-          if (find) {
-            append = find;
-            canv = find.querySelector('canvas');
-          } else {
-            append = document.createElement('div');
-            const remove = document.createElement('div');
-            remove.innerHTML = '<i class="material-icons remove-icon">delete</i>';
-            remove.setAttribute('class', 'remove btn-floating btn-large waves-effect waves-light red');
-            append.appendChild(remove);
-            append.classList.add('canvas');
-            append.classList.add('js-resizable');
-            append._rect = r;
-            canv = document.createElement('canvas');
-            append.appendChild(canv);
-            interact(append).resizable({
-              edges: { left: true, right: true, bottom: true, top: true },
-              modifiers: [ interact.modifiers.aspectRatio({
-                ratio: 'preserve'
-              })],
-              listeners: {
-                move (event) {
-                  const target = event.target
-                  let x = (parseFloat(target.getAttribute('data-x')) || 0)
-                  let y = (parseFloat(target.getAttribute('data-y')) || 0)
+        video.style.width = width + 'px';
+        video.style.height = height + 'px';
 
-                  // update the element's style
-                  target.style.width = event.rect.width + 'px'
-                  target.style.height = event.rect.height + 'px'
+        const fabricCanvas = new fabric.Canvas(canvas, {
+          width,
+          height
+        });
 
-                  // translate when resizing from top or left edges
-                  x += event.deltaRect.left
-                  y += event.deltaRect.top
+        const zones = document.querySelector('#zones');
 
-                  target.setAttribute('data-x', x)
-                  target.setAttribute('data-y', y)
-                }
-              }
-            });
-          }
-          const ctx = canv.getContext('2d');
-          if (!append.hasAttribute('style')) {
-            append.style.width = r.width * r.scaleX + 'px';
-            append.style.height = r.height * r.scaleY + 'px';
-          }
-          canv.width = r.width * r.scaleX;
-          canv.height = r.height * r.scaleY;
-          const videoHeight = video.videoHeight;
-          const videoWidth = video.videoWidth;
-          const correctPosition = {
-            width: videoWidth / width,
-            height: videoHeight / height
-          }
-          ctx.drawImage(
-            video,
-            r.left * correctPosition.width,
-            r.top * correctPosition.height,
-            r.width * correctPosition.width * r.scaleX,
-            r.height * correctPosition.height * r.scaleX,
-            0,
-            0,
-            r.width * r.scaleX,
-            r.height * r.scaleY);
-          if (!find) {
-            zones.appendChild(append)
-          }
-        })
-        fabric.util.requestAnimFrame(render);
-      });
-
-
-      let modelsLoaded = false;
-
-      (function() {
-        try {
-          const idleCallback = requestIdleCallback || setImmediate;
-          const path = location.hostname === 'localhost' ? '/models' : '/capture_demo/models'
-          idleCallback(() => {
-            Promise.all([
-              faceapi.nets.tinyFaceDetector.loadFromUri(path),
-              faceapi.nets.faceLandmark68Net.loadFromUri(path),
-              faceapi.nets.faceRecognitionNet.loadFromUri(path),
-              faceapi.nets.faceExpressionNet.loadFromUri(path)
-            ]).then(() => modelsLoaded = true);
-          });
-
-        } catch(e) {
-          console.log(e);
-        }
-      })();
-
-      const faceRects = [];
-
-      async function detect() {
-        try {
-          if (modelsLoaded) {
-            const data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
-            faceRects.forEach(i => fabricCanvas.remove(i));
-            faceRects.length = 0;
-            if (data.length) {
-              data.forEach(({ expressions, detection: { box, imageDims } }) => {
-                const realPosition = imageDims;
-                const correctPosition = {
-                  width: realPosition.width / width,
-                  height: realPosition.height / height
-                }
-                faceRects.push(new fabric.Rect({
-                  left: box.x / correctPosition.width,
-                  top: box.y / correctPosition.height,
-                  width: box.width / correctPosition.width,
-                  height: box.height / correctPosition.height,
-                  stroke: 'blue',
-                  strokeWidth: 3,
-                  fill: '',
-                  selectable: false,
-                  hasRotatingPoint : false
-                }));
-                const arr = expressions.asSortedArray();
-                if (arr.length) {
-                  faceRects.push(new fabric.Text(arr[0].expression, {
-                    left: box.x / correctPosition.width + 4,
-                    top: box.y / correctPosition.height + box.height / correctPosition.height,
-                    fill: 'blue',
-                    selectable: false,
-                    centerRotation: false
-                  }));
-                }
-
-              })
-              faceRects.forEach(i => fabricCanvas.add(i));
-              fabricCanvas.requestRenderAllBound()
+        zones.addEventListener('click', (e) => {
+          if (e.target.classList.contains('remove')) {
+            e.preventDefault();
+            if (e.target.parentNode._rect) {
+              const _rect = e.target.parentNode._rect;
+              fabricCanvas.remove(_rect);
+              rects.splice(rects.indexOf(_rect), 1);
+              e.target.parentNode.remove();
+            }
+          } else if (e.target.classList.contains('remove-icon')) {
+            e.preventDefault();
+            if (e.target.parentNode.parentNode._rect) {
+              const _rect = e.target.parentNode.parentNode._rect;
+              fabricCanvas.remove(_rect);
+              rects.splice(rects.indexOf(_rect), 1);
+              e.target.parentNode.parentNode.remove();
             }
           }
-        } catch (e) {
-          console.log(e);
-        } finally {
-          await detect();
+        })
+
+        let initialPos, bounds, rect, dragging = false, isMoving = false;
+        const options = {
+          drawRect: false,
+          onlyOne: false,
+          rectProps: {
+            stroke: 'red',
+            strokeWidth: 1,
+            fill: '',
+            hasRotatingPoint : false,
+            lockUniScaling: true
+          }
         }
+
+        window.rects = [];
+
+        function onMouseDown(e) {
+          dragging = true;
+          initialPos = { ...e.pointer }
+          bounds = {}
+          if (isMoving) {
+            isMoving = false;
+            return;
+          }
+          if(options.drawRect && !isMoving){
+            rect = new fabric.Rect({
+              left: initialPos.x,
+              top: initialPos.y,
+              width: 0, height: 0,
+              ...options.rectProps
+            });
+            fabricCanvas.add(rect)
+            rects.push(rect);
+          }
+        }
+        function update({pointer}) {
+          if (initialPos.x > pointer.x) {
+            bounds.x = Math.max(0, pointer.x)
+            bounds.width = initialPos.x - bounds.x
+          } else {
+            bounds.x = initialPos.x
+            bounds.width = pointer.x - initialPos.x
+          }
+          if (initialPos.y > pointer.y) {
+            bounds.y = Math.max(0, pointer.y)
+            bounds.height = initialPos.y - bounds.y
+          } else {
+            bounds.height = pointer.y - initialPos.y
+            bounds.y = initialPos.y
+          }
+          if(options.drawRect && !isMoving){
+            rect.left = bounds.x
+            rect.top = bounds.y
+            rect.width = bounds.width
+            rect.height = bounds.height
+            rect.dirty = true
+            fabricCanvas.requestRenderAllBound()
+          }
+        }
+
+        function onMouseMove(e) {
+          if (!dragging && !isMoving) return;
+          requestAnimationFrame(() => update(e))
+        }
+
+        function onMouseUp(e) {
+          dragging = false;
+          if (options.drawRect && rect && (rect.width == 0 || rect.height === 0)) {
+            fabricCanvas.remove(rect)
+          }
+          if((!options.drawRect||!rect) && !isMoving){
+            rect = new fabric.Rect({
+              ...bounds, left: bounds.x, top: bounds.y,
+              ...options.rectProps
+            });
+            fabricCanvas.add(rect)
+            rects.push(rect);
+            rect.dirty = true
+            fabricCanvas.requestRenderAllBound()
+          }
+          isMoving = false;
+          rect.setCoords()
+        }
+        function install() {
+          fabricCanvas.on('mouse:down', onMouseDown);
+          fabricCanvas.on('object:moving', () => {
+            isMoving = true;
+          });
+          fabricCanvas.on('object:scaling', () => {
+            isMoving = true;
+          });
+          fabricCanvas.on('object:rotating', () => {
+            isMoving = true;
+          });
+          fabricCanvas.on('object:skewing', () => {
+            isMoving = true;
+          });
+          fabricCanvas.on('mouse:move', onMouseMove);
+          fabricCanvas.on('mouse:up', onMouseUp);
+        }
+
+        install();
+
+        fabric.customBackground = fabric.util.createClass(fabric.Object, {
+          render(ctx) {
+            ctx.drawImage(video, 0,0, width, height);
+          }
+        });
+
+        Object.assign(window, {
+          _test: {
+            fabricCanvas
+          }
+        })
+
+        fabricCanvas.add(new fabric.customBackground());
+        fabric.util.requestAnimFrame(function render() {
+          fabricCanvas.renderAll();
+          rects.forEach(r => {
+            let canv;
+            let append;
+            const find = [...zones.querySelectorAll('.canvas')].find(c => c._rect === r);
+            if (find) {
+              append = find;
+              canv = find.querySelector('canvas');
+            } else {
+              append = document.createElement('div');
+              const remove = document.createElement('div');
+              remove.innerHTML = '<i class="material-icons remove-icon">delete</i>';
+              remove.setAttribute('class', 'remove btn-floating btn-large waves-effect waves-light red');
+              append.appendChild(remove);
+              append.classList.add('canvas');
+              append.classList.add('js-resizable');
+              append._rect = r;
+              canv = document.createElement('canvas');
+              append.appendChild(canv);
+              interact(append).resizable({
+                edges: { left: true, right: true, bottom: true, top: true },
+                modifiers: [ interact.modifiers.aspectRatio({
+                  ratio: 'preserve'
+                })],
+                listeners: {
+                  move (event) {
+                    const target = event.target
+                    let x = (parseFloat(target.getAttribute('data-x')) || 0)
+                    let y = (parseFloat(target.getAttribute('data-y')) || 0)
+
+                    // update the element's style
+                    target.style.width = event.rect.width + 'px'
+                    target.style.height = event.rect.height + 'px'
+
+                    // translate when resizing from top or left edges
+                    x += event.deltaRect.left
+                    y += event.deltaRect.top
+
+                    target.setAttribute('data-x', x)
+                    target.setAttribute('data-y', y)
+                  }
+                }
+              });
+            }
+            const ctx = canv.getContext('2d');
+            if (!append.hasAttribute('style')) {
+              append.style.width = r.width * r.scaleX + 'px';
+              append.style.height = r.height * r.scaleY + 'px';
+            }
+            canv.width = r.width * r.scaleX;
+            canv.height = r.height * r.scaleY;
+            const videoHeight = video.videoHeight;
+            const videoWidth = video.videoWidth;
+            const correctPosition = {
+              width: videoWidth / width,
+              height: videoHeight / height
+            }
+            ctx.drawImage(
+              video,
+              r.left * correctPosition.width,
+              r.top * correctPosition.height,
+              r.width * correctPosition.width * r.scaleX,
+              r.height * correctPosition.height * r.scaleX,
+              0,
+              0,
+              r.width * r.scaleX,
+              r.height * r.scaleY);
+            if (!find) {
+              zones.appendChild(append)
+            }
+          })
+          fabric.util.requestAnimFrame(render);
+        });
+
+        const faceRects = [];
+
+        async function detect() {
+          try {
+            if (modelsLoaded) {
+              const data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+              faceRects.forEach(i => fabricCanvas.remove(i));
+              faceRects.length = 0;
+              if (data.length) {
+                data.forEach(({ expressions, detection: { box, imageDims } }) => {
+                  const realPosition = imageDims;
+                  const correctPosition = {
+                    width: realPosition.width / width,
+                    height: realPosition.height / height
+                  }
+                  faceRects.push(new fabric.Rect({
+                    left: box.x / correctPosition.width,
+                    top: box.y / correctPosition.height,
+                    width: box.width / correctPosition.width,
+                    height: box.height / correctPosition.height,
+                    stroke: 'blue',
+                    strokeWidth: 3,
+                    fill: '',
+                    selectable: false,
+                    hasRotatingPoint : false
+                  }));
+                  const arr = expressions.asSortedArray();
+                  if (arr.length) {
+                    faceRects.push(new fabric.Text(arr[0].expression, {
+                      left: box.x / correctPosition.width + 4,
+                      top: box.y / correctPosition.height + box.height / correctPosition.height,
+                      fill: 'blue',
+                      selectable: false,
+                      centerRotation: false
+                    }));
+                  }
+
+                })
+                faceRects.forEach(i => fabricCanvas.add(i));
+                fabricCanvas.requestRenderAllBound()
+              }
+            }
+          } catch (e) {
+            console.log(e);
+          } finally {
+            await detect();
+          }
+        }
+
+        const interval = setInterval(() => {
+          if (modelsLoaded) {
+            detect()
+            clearInterval(interval);
+          }
+        }, 1000);
       }
 
-      const interval = setInterval(() => {
-        if (modelsLoaded) {
-          detect()
-          clearInterval(interval);
-        }
-      }, 1000);
+
     }
-
-
 </script>
 </body>
 </html>
