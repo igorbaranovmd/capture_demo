@@ -340,6 +340,42 @@
         })
 
         fabricCanvas.add(new fabric.customBackground());
+
+        let data = [];
+
+        const interval = setInterval(async () => {
+          if (modelsLoaded) {
+            detect()
+            clearInterval(interval);
+          }
+        }, 1000)
+
+        const detect = async () => {
+          try {
+            data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+          } catch (e) {
+
+          } finally {
+            await detect();
+          }
+        }
+
+        const drawFaceConfig = {
+          width,
+          height
+        }
+
+        fabric.recognize = fabric.util.createClass(fabric.Object, {
+          async render(ctx) {
+            const resized = faceapi.resizeResults(data, drawFaceConfig);
+            faceapi.draw.drawDetections(fabricCanvas.lowerCanvasEl, resized);
+            faceapi.draw.drawFaceExpressions(fabricCanvas.lowerCanvasEl, resized, 0.05);
+
+          }
+        });
+
+        fabricCanvas.add(new fabric.recognize());
+
         fabric.util.requestAnimFrame(function render() {
           fabricCanvas.renderAll();
           rects.forEach(r => {
@@ -415,61 +451,24 @@
           fabric.util.requestAnimFrame(render);
         });
 
-        const faceRects = [];
+        // const faceRects = [];
 
-        async function detect() {
-          try {
-            if (modelsLoaded) {
-              const data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
-              faceRects.forEach(i => fabricCanvas.remove(i));
-              faceRects.length = 0;
-              if (data.length) {
-                data.forEach(({ expressions, detection: { box, imageDims } }) => {
-                  const realPosition = imageDims;
-                  const correctPosition = {
-                    width: realPosition.width / width,
-                    height: realPosition.height / height
-                  }
-                  faceRects.push(new fabric.Rect({
-                    left: box.x / correctPosition.width,
-                    top: box.y / correctPosition.height,
-                    width: box.width / correctPosition.width,
-                    height: box.height / correctPosition.height,
-                    stroke: 'blue',
-                    strokeWidth: 3,
-                    fill: '',
-                    selectable: false,
-                    hasRotatingPoint : false
-                  }));
-                  const arr = expressions.asSortedArray();
-                  if (arr.length) {
-                    faceRects.push(new fabric.Text(arr[0].expression, {
-                      left: box.x / correctPosition.width + 4,
-                      top: box.y / correctPosition.height + box.height / correctPosition.height,
-                      fill: 'blue',
-                      selectable: false,
-                      centerRotation: false
-                    }));
-                  }
+        // async function detect() {
+        //   try {
+        //
+        //   } catch (e) {
+        //     console.log(e);
+        //   } finally {
+        //     await detect();
+        //   }
+        // }
 
-                })
-                faceRects.forEach(i => fabricCanvas.add(i));
-                fabricCanvas.requestRenderAllBound()
-              }
-            }
-          } catch (e) {
-            console.log(e);
-          } finally {
-            await detect();
-          }
-        }
-
-        const interval = setInterval(() => {
-          if (modelsLoaded) {
-            detect()
-            clearInterval(interval);
-          }
-        }, 1000);
+        // const interval = setInterval(() => {
+        //   if (modelsLoaded) {
+        //     detect()
+        //     clearInterval(interval);
+        //   }
+        // }, 1000);
       }
 
 
