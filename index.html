@@ -323,6 +323,8 @@
           });
           fabricCanvas.on('mouse:move', onMouseMove);
           fabricCanvas.on('mouse:up', onMouseUp);
+
+          fabricCanvas.on('after:render', function(){ this.calcOffset(); });
         }
 
         install();
