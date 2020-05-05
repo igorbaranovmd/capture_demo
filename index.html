@@ -388,7 +388,6 @@
         fabricCanvas.add(new fabric.recognize());
 
         fabric.util.requestAnimFrame(function render() {
-          fabricCanvas.renderAll();
           rects.forEach(r => {
             let canv;
             let append;
@@ -459,27 +458,15 @@
               zones.appendChild(append)
             }
           })
-          fabric.util.requestAnimFrame(render);
+          setTimeout(() => {
+            fabric.util.requestAnimFrame(render);
+          }, 0);
         });
 
-        // const faceRects = [];
-
-        // async function detect() {
-        //   try {
-        //
-        //   } catch (e) {
-        //     console.log(e);
-        //   } finally {
-        //     await detect();
-        //   }
-        // }
-
-        // const interval = setInterval(() => {
-        //   if (modelsLoaded) {
-        //     detect()
-        //     clearInterval(interval);
-        //   }
-        // }, 1000);
+        fabric.util.requestAnimFrame(function refresh() {
+          fabricCanvas.renderAll();
+          fabric.util.requestAnimFrame(refresh);
+        });
       }
 
 
