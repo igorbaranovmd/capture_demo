@@ -113,7 +113,7 @@
 
       const path = location.hostname === 'localhost' ? '/models' : '/capture_demo/models'
       Promise.all([
-        faceapi.nets.faceExpressionNet.loadFromUri(path),
+        // faceapi.nets.faceExpressionNet.loadFromUri(path),
         faceapi.nets.tinyFaceDetector.loadFromUri(path)
       ]).then(() => {
             modalBootstrapped.close();
@@ -420,11 +420,11 @@
         async function detect() {
           try {
             if (modelsLoaded) {
-              const data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+              const data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions());
               faceRects.forEach(i => fabricCanvas.remove(i));
               faceRects.length = 0;
               if (data.length) {
-                data.forEach(({ expressions, detection: { box, imageDims } }) => {
+                data.forEach(({ box, imageDims }) => {
                   const realPosition = imageDims;
                   const correctPosition = {
                     width: realPosition.width / width,
@@ -441,16 +441,16 @@
                     selectable: false,
                     hasRotatingPoint : false
                   }));
-                  const arr = expressions.asSortedArray();
-                  if (arr.length) {
-                    faceRects.push(new fabric.Text(arr[0].expression, {
-                      left: box.x / correctPosition.width + 4,
-                      top: box.y / correctPosition.height + box.height / correctPosition.height,
-                      fill: 'blue',
-                      selectable: false,
-                      centerRotation: false
-                    }));
-                  }
+                  // const arr = expressions.asSortedArray();
+                  // if (arr.length) {
+                  //   faceRects.push(new fabric.Text(arr[0].expression, {
+                  //     left: box.x / correctPosition.width + 4,
+                  //     top: box.y / correctPosition.height + box.height / correctPosition.height,
+                  //     fill: 'blue',
+                  //     selectable: false,
+                  //     centerRotation: false
+                  //   }));
+                  // }
 
                 })
                 faceRects.forEach(i => fabricCanvas.add(i));
