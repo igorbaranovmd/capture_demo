@@ -192,6 +192,7 @@
       });
     }
 
+
     function startLogic(width, height) {
       if (!width || !height) {
         video.style.display = 'block';
@@ -504,6 +505,30 @@
         fabricCanvas.renderAll();
         fabric.util.requestAnimFrame(refresh);
       });
+
+      function resize() {
+        video.removeAttribute('style');
+        const videoRect = video.getBoundingClientRect();
+        const vRatio = video.videoWidth / video.videoHeight;
+        width = videoRect.width;
+        height = width / vRatio;
+        video.style.display = 'none';
+        canvas.setAttribute('width', width);
+        canvas.setAttribute('height', height);
+        video.setAttribute('width', width);
+        video.setAttribute('height', height);
+        video.style.width = width + 'px';
+        video.style.height = height + 'px';
+        fabricCanvas.setDimensions({
+          width,
+          height
+        })
+        drawFaceConfig.width = width;
+        drawFaceConfig.height = height;
+      }
+
+      window.addEventListener('orientationchange', resize);
+      window.addEventListener('resize', resize);
     }
 
 
