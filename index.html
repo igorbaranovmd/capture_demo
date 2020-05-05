@@ -329,18 +329,43 @@
         rect.setCoords()
       }
 
+      function preventResizeOut() {
+        const currentRect = this.getActiveObject();
+        if (currentRect instanceof fabric.Rect) {
+          if (currentRect.top < 0) {
+            currentRect.top = 0;
+          }
+          if (currentRect.left < 0) {
+            currentRect.left = 0;
+          }
+
+          if ((currentRect.left + currentRect.width * currentRect.scaleX) > width) {
+            currentRect.left = width - currentRect.width * currentRect.scaleX;
+          }
+
+          if ((currentRect.top + currentRect.height * currentRect.scaleY) > height) {
+            currentRect.top = height - currentRect.height * currentRect.scaleY;
+          }
+          currentRect.setCoords();
+        }
+      };
+
       function install() {
         fabricCanvas.on('mouse:down', onMouseDown);
-        fabricCanvas.on('object:moving', () => {
+        fabricCanvas.on('object:moving', function() {
+          preventResizeOut.call(this);
           isMoving = true;
         });
-        fabricCanvas.on('object:scaling', () => {
+        fabricCanvas.on('object:scaling', function() {
+          preventResizeOut.call(this);
           isMoving = true;
         });
-        fabricCanvas.on('object:rotating', () => {
+        fabricCanvas.on('object:rotating', function() {
+          preventResizeOut.call(this);
           isMoving = true;
         });
-        fabricCanvas.on('object:skewing', () => {
+        fabricCanvas.on('object:skewing', function() {
+          preventResizeOut.call(this);
           isMoving = true;
         });
         fabricCanvas.on('mouse:move', onMouseMove);
@@ -348,27 +373,6 @@
 
         fabricCanvas.on('after:render', function () {
           this.calcOffset();
-        });
-
-        fabricCanvas.on('object:moving', function() {
-          const currentRect = this.getActiveObject();
-          if (currentRect instanceof fabric.Rect) {
-            if (currentRect.top < 0) {
-              currentRect.top = 0;
-            }
-            if (currentRect.left < 0) {
-              currentRect.left = 0;
-            }
-
-            if ((currentRect.left + currentRect.width * currentRect.scaleX) > width) {
-              currentRect.left = width - currentRect.width * currentRect.scaleX;
-            }
-
-            if ((currentRect.top + currentRect.height * currentRect.scaleY) > height) {
-              currentRect.top = height - currentRect.height * currentRect.scaleY;
-            }
-            currentRect.setCoords();
-          }
         });
       }
 
