@@ -407,26 +407,22 @@
         }, 1);
       }
 
+
+
       const interval = setInterval(() => {
         if (modelsLoaded) {
-          detect()
+          fabric.util.requestAnimFrame(async function detect() {
+            try {
+              data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+            } catch (e) {
+
+            } finally {
+              fabric.util.requestAnimFrame(detect)
+            }
+          });
           clearInterval(interval);
         }
       }, 1000)
-
-      const detect = async () => {
-        try {
-          window.requestIdleCallback(async () => {
-            data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
-          })
-        } catch (e) {
-
-        } finally {
-          setTimeout(() => {
-            detect();
-          }, 100);
-        }
-      }
 
       const drawFaceConfig = {
         width,
