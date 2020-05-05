@@ -394,7 +394,20 @@
 
       let data = [];
 
-      const interval = setInterval(async () => {
+      window.requestIdleCallback = window.requestIdleCallback || function(handler) {
+        let startTime = Date.now();
+
+        return setTimeout(function() {
+          handler({
+            didTimeout: false,
+            timeRemaining: function() {
+              return Math.max(0, 50.0 - (Date.now() - startTime));
+            }
+          });
+        }, 1);
+      }
+
+      const interval = setInterval(() => {
         if (modelsLoaded) {
           detect()
           clearInterval(interval);
@@ -403,7 +416,9 @@
 
       const detect = async () => {
         try {
-          data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+          window.requestIdleCallback(async () => {
+            data = await faceapi.detectAllFaces(fabricCanvas.lowerCanvasEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+          })
         } catch (e) {
 
         } finally {
