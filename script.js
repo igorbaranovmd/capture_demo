@@ -336,7 +336,7 @@ function main() {
         fill: 'blue',
         top: height - 40 - 35 - 20 + 49,
         width: 30,
-        height: 1,
+        height: 0,
         left: width - (index === 0 ? 30 : (index * 40) + 30) - 15
       })
 
