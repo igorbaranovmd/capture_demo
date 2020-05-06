@@ -214,10 +214,11 @@ function main() {
 
     function onMouseUp(e) {
       dragging = false;
-      if (options.drawRect && rect && (rect.width == 0 || rect.height === 0)) {
-        fabricCanvas.remove(rect)
+      if (rect && (rect.width < 10 || rect.height < 10)) {
+        fabricCanvas.remove(rect);
+        rects.splice(rects.indexOf(rect), 1);
       }
-      if ((!options.drawRect || !rect) && !isMoving) {
+      if ((!options.drawRect || !rect) && !isMoving && Object.keys(bounds).length) {
         rect = new fabric.Rect({
           ...bounds, left: bounds.x, top: bounds.y,
           ...options.rectProps
@@ -228,7 +229,7 @@ function main() {
         fabricCanvas.requestRenderAllBound()
       }
       isMoving = false;
-      rect.setCoords()
+      rect && rect.setCoords()
     }
 
     function preventResizeOut() {
@@ -305,7 +306,7 @@ function main() {
         emoji: 0x1F615,
         value: 0
       },
-      suprised: {
+      surprised: {
         emoji: 0x1F62E,
         value: 0
       }
