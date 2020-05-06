@@ -288,19 +288,6 @@ function main() {
 
     fabricCanvas.add(new fabric.customBackground());
 
-    window.requestIdleCallback = window.requestIdleCallback || function(handler) {
-      let startTime = Date.now();
-
-      return setTimeout(function() {
-        handler({
-          didTimeout: false,
-          timeRemaining: function() {
-            return Math.max(0, 50.0 - (Date.now() - startTime));
-          }
-        });
-      }, 1);
-    }
-
     const emotionsMap = {
       happy: {
         emoji: 0x1F603,
@@ -359,7 +346,7 @@ function main() {
           } finally {
             setTimeout(() => {
               fabric.util.requestAnimFrame(detect)
-            }, 200);
+            }, 100);
           }
         });
         clearInterval(interval);
@@ -390,7 +377,7 @@ function main() {
         });
         emotionsData.length = 0;
       }
-    }, 100);
+    }, 5000);
 
     fabric.util.requestAnimFrame(function render() {
       rects.forEach(r => {
