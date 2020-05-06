@@ -380,6 +380,12 @@ function main() {
       }
     }, 5000);
 
+    fabric.loadSVGFromURL('https://image.flaticon.com/icons/svg/865/865969.svg', (objects, options) => {
+      const heart = fabric.util.groupSVGElements(objects, options);
+      heart.scaleToHeight(30).set('top', 15).set('left', width - 50);
+      fabricCanvas.add(heart);
+    })
+
     fabric.util.requestAnimFrame(function render() {
       rects.forEach(r => {
         let canv;
