@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', main);
 
 function main() {
 
+  const innerGlobal = {};
+
   const captureVideoButton = document.querySelector('#test .capture-button');
   const startWithUpload = document.querySelector('#test .start-with-upload');
   const buttonsContainer = document.querySelector('#buttons');
@@ -9,6 +11,9 @@ function main() {
   const video = document.querySelector('#test video');
   const testContainer = document.querySelector('#test');
   const modal = document.querySelector('#modal');
+  const canvasContainer = document.querySelector('.main-view-container');
+  const videoContainer = document.querySelector('.video-container');
+
 
   const modalBootstrapped = M.Modal.init(modal, {
     dismissible: false
@@ -51,6 +56,7 @@ function main() {
     const target = e.target;
     if (target.files.length) {
       buttonsContainer.style.display = 'none';
+      canvasContainer.removeAttribute('style');
       if (URL && URL.createObjectURL) {
         init(null, null, null, URL.createObjectURL(target.files[0]));
       } else {
@@ -71,6 +77,7 @@ function main() {
   });
   captureVideoButton.onclick = function () {
     buttonsContainer.style.display = 'none';
+    canvasContainer.removeAttribute('style');
     navigator.mediaDevices.getUserMedia({
       video: true
     }).then(stream => {
@@ -104,7 +111,41 @@ function main() {
       height = width / vRatio;
     }
     video.style.display = 'none';
+    interact(canvasContainer).resizable({
+      edges: {
+        left: '.corner.left',
+        right: '.corner.right',
+        bottom: '.corner.bottom',
+        top: '.corner.top'
+      },
+      modifiers: [
+        interact.modifiers.aspectRatio({
+          ratio: 'preserve'
+        }),interact.modifiers.restrictSize({
+          min: { width: 250, height: 250  * (height / width) }
+        })],
+      listeners: {
+        move(event) {
+          const target = event.target;
+          let x = (parseFloat(target.getAttribute('data-x')) || 0)
+          let y = (parseFloat(target.getAttribute('data-y')) || 0)
 
+          // update the element's style
+          target.style.width = event.rect.width + 'px'
+          target.style.height = event.rect.height + 'px'
+          videoContainer.style.height = event.rect.height + 'px';
+          videoContainer.style.width = event.rect.width + 'px';
+
+          // translate when resizing from top or left edges
+          x += event.deltaRect.left
+          y += event.deltaRect.top
+
+          target.setAttribute('data-x', x)
+          target.setAttribute('data-y', y)
+          innerGlobal.resize();
+        }
+      }
+    });
     const canvas = document.querySelector('#canvas');
     canvas.setAttribute('width', width);
     canvas.setAttribute('height', height);
@@ -140,7 +181,7 @@ function main() {
         if (e.target.parentNode.parentNode._rect) {
           const _rect = e.target.parentNode.parentNode._rect;
           fabricCanvas.remove(_rect);
-          rects.splice(rects.indexOf(_rect), 1);
+          innerGlobal.rects.splice(innerGlobal.rects.indexOf(_rect), 1);
           e.target.parentNode.parentNode.remove();
         }
       }
@@ -159,7 +200,7 @@ function main() {
       }
     }
 
-    window.rects = [];
+    innerGlobal.rects = [];
 
     function onMouseDown(e) {
       dragging = true;
@@ -177,7 +218,7 @@ function main() {
           ...options.rectProps
         });
         fabricCanvas.add(rect)
-        rects.push(rect);
+        innerGlobal.rects.push(rect);
       }
     }
 
@@ -216,7 +257,7 @@ function main() {
       dragging = false;
       if (rect && (rect.width < 10 || rect.height < 10)) {
         fabricCanvas.remove(rect);
-        rects.splice(rects.indexOf(rect), 1);
+        innerGlobal.rects.splice(innerGlobal.rects.indexOf(rect), 1);
       }
       if ((!options.drawRect || !rect) && !isMoving && Object.keys(bounds).length) {
         rect = new fabric.Rect({
@@ -224,7 +265,7 @@ function main() {
           ...options.rectProps
         });
         fabricCanvas.add(rect)
-        rects.push(rect);
+        innerGlobal.rects.push(rect);
         rect.dirty = true
         fabricCanvas.requestRenderAllBound()
       }
@@ -251,7 +292,7 @@ function main() {
         }
         currentRect.setCoords();
       }
-    };
+    }
 
     function install() {
       fabricCanvas.on('mouse:down', onMouseDown);
@@ -352,9 +393,9 @@ function main() {
         });
         clearInterval(interval);
       }
-    }, 1000)
+    }, 1000);
 
-    setInterval(() => {
+    function updateEmotions() {
       if (emotionsData.length) {
         const total = emotionsData.reduce((prev, { expressions }) => {
           if (Object.keys(prev).length) {
@@ -378,16 +419,18 @@ function main() {
         });
         emotionsData.length = 0;
       }
-    }, 5000);
+    }
 
+    setInterval(updateEmotions, 5000);
+    let heart;
     fabric.loadSVGFromURL('https://image.flaticon.com/icons/svg/865/865969.svg', (objects, options) => {
-      const heart = fabric.util.groupSVGElements(objects, options);
+      heart = fabric.util.groupSVGElements(objects, options);
       heart.scaleToHeight(30).set('top', 15).set('left', width - 50);
       fabricCanvas.add(heart);
     })
 
     fabric.util.requestAnimFrame(function render() {
-      rects.forEach(r => {
+      innerGlobal.rects.forEach(r => {
         let canv;
         let append;
         const find = [...zones.querySelectorAll('.canvas')].find(c => c._rect === r);
@@ -409,6 +452,8 @@ function main() {
             edges: {left: true, right: true, bottom: true, top: true},
             modifiers: [interact.modifiers.aspectRatio({
               ratio: 'preserve'
+            }), interact.modifiers.restrictSize({
+              min: { width: 100, height: 100 }
             })],
             listeners: {
               move(event) {
@@ -467,7 +512,7 @@ function main() {
       fabric.util.requestAnimFrame(refresh);
     });
 
-    function resize() {
+    innerGlobal.resize = function resize() {
       video.removeAttribute('style');
       const videoRect = video.getBoundingClientRect();
       const vRatio = video.videoWidth / video.videoHeight;
@@ -480,14 +525,35 @@ function main() {
       video.setAttribute('height', height);
       video.style.width = width + 'px';
       video.style.height = height + 'px';
+      const scaleMultiplier = width / fabricCanvas.width;
+      innerGlobal.rects.forEach(r => {
+        r.scaleX = r.scaleX * scaleMultiplier;
+        r.scaleY = r.scaleY * scaleMultiplier;
+        r.left = r.left * scaleMultiplier;
+        r.top = r.top * scaleMultiplier;
+        r.setCoords();
+      });
       fabricCanvas.setDimensions({
         width,
         height
       })
-    }
+      Object.keys(emotionsMap).reverse().forEach((key, index) => {
+        emotionsMap[key].text
+          .set('top', height - 40)
+          .set('left', width - (index === 0 ? 30 : (index * 40) + 30) - 15)
+          .setCoords();
 
-    window.addEventListener('orientationchange', resize);
-    window.addEventListener('resize', resize);
+        emotionsMap[key].rect
+          .set('top', height - 40 - 35 - 20 + (50 - 50 * emotionsMap[key].value))
+          .set('height', 50 * emotionsMap[key].value)
+          .set('left', width - (index === 0 ? 30 : (index * 40) + 30) - 15)
+          .setCoords();
+      });
+      heart && heart.set('left', width - 50).setCoords();
+      fabricCanvas.calcOffset();
+    }
+    window.addEventListener('orientationchange', innerGlobal.resize);
+    window.addEventListener('resize', innerGlobal.resize);
   }
 
 

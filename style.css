@@ -44,3 +44,40 @@ video {
     height: 100%;
     pointer-events: none;
 }
+
+.main-view-container {
+    position: relative;
+}
+
+.main-view-container .corner {
+    width: 15px;
+    height: 15px;
+    position: absolute;
+    background-color: red;
+    z-index: 9999;
+    opacity: 0.7;
+}
+
+.main-view-container .corner.left {
+    top: 50%;
+    transform: translateY(-50%);
+    left: 5px;
+}
+
+.main-view-container .corner.top {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.main-view-container .corner.bottom{
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.main-view-container .corner.right {
+    top: 50%;
+    transform: translateY(-50%);
+    right: 5px;
+}

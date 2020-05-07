@@ -45,13 +45,17 @@
         <button class="waves-effect waves-light btn-large start-with-upload red">START WITH UPLOAD</button>
         <input id="file-input" type="file" name="name" style="display: none;" accept="video/*"/>
     </div>
-    <div class="col m6 s12">
+    <div class="col m6 s12 main-view-container" style="visibility: hidden">
+        <div class="corner right"></div>
+        <div class="corner left"></div>
+        <div class="corner bottom"></div>
+        <div class="corner top"></div>
         <canvas id="canvas"></canvas>
     </div>
     <div id="zones" class="col m6 s12">
 
     </div>
-    <div class="col m6 s12">
+    <div class="col m6 s12 video-container">
         <video autoplay style="display: none"></video>
     </div>
 </div>
