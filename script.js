@@ -317,7 +317,8 @@ function main() {
         fabricCanvas.remove(rect);
         innerGlobal.rects.splice(innerGlobal.rects.indexOf(rect), 1);
       }
-      if ((!options.drawRect || !rect) && !isMoving && Object.keys(bounds).length) {
+      if ((!options.drawRect || !rect) && !isMoving && Object.keys(bounds).length && bounds.width > 10 && bounds.height > 10) {
+
         rect = new fabric.Rect({
           ...bounds, left: bounds.x, top: bounds.y,
           ...options.rectProps
