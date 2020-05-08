@@ -2,7 +2,9 @@ document.addEventListener('DOMContentLoaded', main);
 
 function main() {
 
-  const innerGlobal = {};
+  const innerGlobal = {
+    bootstrapped: false
+  };
 
   const captureVideoButton = document.querySelector('#test .capture-button');
   const startWithUpload = document.querySelector('#test .start-with-upload');
@@ -13,6 +15,43 @@ function main() {
   const modal = document.querySelector('#modal');
   const canvasContainer = document.querySelector('.main-view-container');
   const videoContainer = document.querySelector('.video-container');
+  const videoStreamSelect = document.querySelector('#video-stream');
+  const videoStreamSelectContainer = document.querySelector('.video-select-container');
+  const uploadNewVideoContainer = document.querySelector('.upload-new-file-container');
+  const uploadNewVideo = document.querySelector('.upload-new-file');
+  const seekToStart = document.querySelector('.seek-to-start');
+
+  seekToStart.addEventListener('click', () => {
+    video.currentTime = 0;
+    video.play();
+  });
+
+
+  videoStreamSelect.addEventListener('change', (evt) => {
+    const value = evt.target.value;
+    if (value === 'default') {
+      navigator.mediaDevices.getUserMedia({
+        video: true
+      }).then(stream => {
+        const tracks = stream.getTracks();
+        if (!tracks.length) throw new Error('pew');
+        video.srcObject = stream;
+      }).catch((e) => {
+        alert('something went wrong')
+      });
+    } else {
+      navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId: value
+        }
+      }).then(stream => {
+        video.srcObject = stream;
+
+      }).catch((e) => {
+        alert('something went wrong')
+      });
+    }
+  });
 
 
   const modalBootstrapped = M.Modal.init(modal, {
@@ -48,7 +87,7 @@ function main() {
     });
 
 
-  startWithUpload.onclick = function () {
+  uploadNewVideo.onclick = startWithUpload.onclick = function () {
     fileInput.click();
   }
 
@@ -56,6 +95,7 @@ function main() {
     const target = e.target;
     if (target.files.length) {
       buttonsContainer.style.display = 'none';
+      uploadNewVideoContainer.style.display = 'block';
       canvasContainer.removeAttribute('style');
       if (URL && URL.createObjectURL) {
         init(null, null, null, URL.createObjectURL(target.files[0]));
@@ -78,15 +118,28 @@ function main() {
   captureVideoButton.onclick = function () {
     buttonsContainer.style.display = 'none';
     canvasContainer.removeAttribute('style');
-    navigator.mediaDevices.getUserMedia({
-      video: true
-    }).then(stream => {
-      const tracks = stream.getTracks();
-      if (!tracks.length) throw new Error('pew');
-      init(null, null, stream);
-    }).catch((e) => {
-      alert('something went wrong')
-    });
+    videoStreamSelectContainer.style.display = 'block';
+    navigator.mediaDevices.enumerateDevices()
+      .then(devices => {
+        const filter = devices.filter(i => i.kind === 'videoinput');
+        filter.forEach(i => {
+          const option = document.createElement('option');
+          option.textContent = i.label;
+          option.value = i.deviceId;
+          videoStreamSelect.appendChild(option);
+        });
+        M.FormSelect.init(videoStreamSelect);
+
+        return navigator.mediaDevices.getUserMedia({
+          video: true
+        }).then(stream => {
+          const tracks = stream.getTracks();
+          if (!tracks.length) throw new Error('pew');
+          init(null, null, stream);
+        }).catch((e) => {
+          alert('something went wrong')
+        });
+      })
   };
 
   function init(width, height, stream, videoSrc) {
@@ -97,7 +150,12 @@ function main() {
     }
     video.addEventListener('loadeddata', () => {
       video.play();
-      startLogic(width, height);
+      if (!innerGlobal.bootstrapped) {
+        startLogic(width, height);
+        innerGlobal.bootstrapped = true;
+      } else {
+        innerGlobal.resize(true);
+      }
     });
   }
 
@@ -512,7 +570,7 @@ function main() {
       fabric.util.requestAnimFrame(refresh);
     });
 
-    innerGlobal.resize = function resize() {
+    innerGlobal.resize = function resize(force) {
       video.removeAttribute('style');
       const videoRect = video.getBoundingClientRect();
       const vRatio = video.videoWidth / video.videoHeight;
@@ -525,6 +583,18 @@ function main() {
       video.setAttribute('height', height);
       video.style.width = width + 'px';
       video.style.height = height + 'px';
+      if (force) {
+        canvasContainer.style.width = width + 'px'
+        canvasContainer.style.height = height + 'px'
+        videoContainer.style.height = height + 'px';
+        videoContainer.style.width = width + 'px';
+
+        let x = (parseFloat(canvasContainer.getAttribute('data-x')) || 0)
+        let y = (parseFloat(canvasContainer.getAttribute('data-y')) || 0)
+
+        canvasContainer.setAttribute('data-x', x);
+        canvasContainer.setAttribute('data-y', y);
+      }
       const scaleMultiplier = width / fabricCanvas.width;
       innerGlobal.rects.forEach(r => {
         r.scaleX = r.scaleX * scaleMultiplier;
